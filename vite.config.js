@@ -1,9 +1,9 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// The site is served from https://<username>.github.io/atlastech/
-// so every asset URL must be prefixed with the repository name.
+// The site is a GitHub Pages *user site* (repository "abdelsamili.github.io"),
+// served from the domain root: https://abdelsamili.github.io/
 export default defineConfig({
-  base: '/atlastech/',
+  base: '/',
   plugins: [react()],
 })

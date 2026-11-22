@@ -3,16 +3,24 @@
 Site one-page d’une **entreprise fictive** (projet universitaire, Master Qualité du Logiciel, FST Fès) utilisé dans une présentation CRM HubSpot. Le formulaire « Demander une démo » est prévu pour être relié à HubSpot : chaque prospect qui le remplit apparaît automatiquement comme contact dans le CRM.
 
 - React + Vite, CSS simple, icônes `lucide-react`
-- Déployé sur GitHub Pages : `https://<username>.github.io/atlastech/`
+- En ligne : **https://abdelsamili.github.io/**
 
 ## Lancer en local
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173/atlastech/
+npm run dev        # http://localhost:5173/
 npm run build      # build de production dans dist/
-npm run preview    # sert dist/ sur http://localhost:4173/atlastech/
+npm run preview    # sert dist/ sur http://localhost:4173/
 ```
+
+## Déploiement
+
+Le dépôt s’appelle `abdelsamili.github.io` : c’est un *site utilisateur* GitHub Pages, servi à la racine du domaine (d’où `base: '/'` dans `vite.config.js`). Ce format permet de saisir `abdelsamili.github.io` dans le champ « Site web de l’entreprise » de HubSpot, qui refuse les sous-chemins.
+
+- Chaque push sur `main` lance `.github/workflows/deploy.yml` : `npm ci`, `npm run build`, puis publication de `dist/` sur GitHub Pages.
+- Réglage requis une seule fois : **Settings > Pages > Build and deployment > Source : GitHub Actions**.
+- L’ancienne adresse `https://abdelsamili.github.io/atlastech/` n’est plus servie depuis le renommage du dépôt.
 
 ## Structure
 
