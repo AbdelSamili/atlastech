@@ -1,4 +1,71 @@
-/* ---------- Shared field styles (placeholder form) ---------- */
+/* ---------- HubSpot embed ----------
+ * The form renders inside an iframe, so its fields are styled in HubSpot's
+ * form editor (Style tab), not here. Only the container is styled: it sits in
+ * the site's form card (see Contact.css).
+ */
+.hubspot-embed .hs-form-frame {
+  width: 100%;
+}
+
+.hubspot-embed iframe {
+  display: block;
+  width: 100% !important;
+  border: 0;
+}
+
+.hubspot-embed__error {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-ctrl);
+  color: var(--text-2-strong);
+}
+
+/* Loading skeleton: mirrors the form layout so nothing jumps when it appears */
+.form-skeleton {
+  display: grid;
+  gap: 20px;
+}
+
+.form-skeleton__row {
+  display: grid;
+  gap: 20px;
+}
+
+@media (min-width: 480px) {
+  .form-skeleton__row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.form-skeleton__field {
+  height: 78px;
+  background:
+    linear-gradient(var(--blue-50), var(--blue-50)) 0 0 / 40% 14px no-repeat,
+    linear-gradient(var(--blue-50), var(--blue-50)) 0 30px / 100% 48px no-repeat;
+  border-radius: var(--radius-ctrl);
+}
+
+.form-skeleton__field--area {
+  height: 150px;
+  background:
+    linear-gradient(var(--blue-50), var(--blue-50)) 0 0 / 30% 14px no-repeat,
+    linear-gradient(var(--blue-50), var(--blue-50)) 0 30px / 100% 120px no-repeat;
+}
+
+.form-skeleton__button {
+  height: 48px;
+  margin-top: 8px;
+  border-radius: var(--radius-ctrl);
+  background: var(--blue-50);
+}
+
+.form-skeleton__label {
+  font-size: 0.875rem;
+  color: var(--text-2);
+  text-align: center;
+}
+
+/* ---------- Demonstration form (fallback when HubSpot is not configured) ---------- */
 .demo-form__grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -19,9 +86,7 @@
   }
 }
 
-.field label,
-.hubspot-embed .hs-form-field > label,
-.hubspot-embed legend.hs-field-desc {
+.field label {
   display: block;
   margin-bottom: 8px;
   font-size: 0.9375rem;
@@ -29,8 +94,7 @@
   color: var(--text);
 }
 
-.field__req,
-.hubspot-embed .hs-form-required {
+.field__req {
   color: var(--blue);
   margin-left: 2px;
 }
@@ -41,8 +105,7 @@
 }
 
 .field input,
-.field textarea,
-.hubspot-embed .hs-input:not([type='checkbox']):not([type='radio']) {
+.field textarea {
   display: block;
   width: 100%;
   min-height: 48px;
@@ -57,43 +120,35 @@
   transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
 }
 
-.field textarea,
-.hubspot-embed textarea.hs-input {
+.field textarea {
   min-height: 120px;
   resize: vertical;
 }
 
 .field input::placeholder,
-.field textarea::placeholder,
-.hubspot-embed .hs-input::placeholder {
+.field textarea::placeholder {
   color: #94a3b8;
 }
 
 .field input:hover,
-.field textarea:hover,
-.hubspot-embed .hs-input:hover {
+.field textarea:hover {
   border-color: #94a3b8;
 }
 
 .field input:focus-visible,
-.field textarea:focus-visible,
-.hubspot-embed .hs-input:focus {
+.field textarea:focus-visible {
   outline: none;
   border-color: var(--blue);
   box-shadow: 0 0 0 3px rgba(16, 72, 150, 0.18);
 }
 
-.field input[aria-invalid='true'],
-.hubspot-embed .hs-input.invalid.error {
+.field input[aria-invalid='true'] {
   border-color: #dc2626;
 }
 
-.field__error,
-.hubspot-embed .hs-error-msgs label,
-.hubspot-embed .hs-error-msg {
+.field__error {
   margin-top: 6px;
   font-size: 0.875rem;
-  font-weight: 400;
   color: #b91c1c;
 }
 
@@ -117,7 +172,6 @@
   flex: none;
 }
 
-/* ---------- Success state (demo) ---------- */
 .demo-success {
   padding: 8px 0;
   outline: none;
@@ -137,99 +191,4 @@
 .demo-success__text {
   margin: 12px 0 28px;
   color: var(--text-2);
-}
-
-/* ---------- HubSpot embed overrides ----------
- * Applies when the form renders in the page (v2 embed, css: '').
- * Forms rendered in an iframe (frame mode) must be styled in HubSpot's
- * form editor: see README > "Style du formulaire HubSpot".
- */
-.hubspot-embed {
-  min-height: 420px; /* reserve space to avoid layout shift while loading */
-  font-family: var(--font);
-}
-
-.hubspot-embed__status {
-  color: var(--text-2);
-}
-
-.hubspot-embed form {
-  display: grid;
-  gap: 20px;
-}
-
-.hubspot-embed fieldset {
-  max-width: none !important;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-.hubspot-embed fieldset.form-columns-2 {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 20px;
-}
-
-@media (min-width: 480px) {
-  .hubspot-embed fieldset.form-columns-2 {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-.hubspot-embed fieldset .hs-form-field,
-.hubspot-embed fieldset .input {
-  width: 100% !important;
-  float: none !important;
-  margin-right: 0 !important;
-}
-
-.hubspot-embed ul.inputs-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.hubspot-embed .hs-richtext,
-.hubspot-embed .legal-consent-container {
-  font-size: 0.8125rem;
-  line-height: 1.6;
-  color: var(--text-2);
-}
-
-.hubspot-embed .hs-button {
-  width: 100%;
-  min-height: 48px;
-  padding: 12px 22px;
-  border: 0;
-  border-radius: var(--radius-ctrl);
-  background: var(--orange);
-  color: var(--text);
-  font-family: var(--font);
-  font-size: 0.9375rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color var(--dur-fast) var(--ease);
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-.hubspot-embed .hs-button:hover {
-  background: var(--orange-hover);
-}
-
-.hubspot-embed .hs-button:focus-visible {
-  outline: 3px solid var(--blue);
-  outline-offset: 3px;
-}
-
-.hubspot-embed .submitted-message {
-  padding: 20px;
-  border: 1px solid var(--green);
-  border-radius: var(--radius-inner);
-  color: var(--text);
-}
-
-.hubspot-embed iframe {
-  width: 100% !important;
 }

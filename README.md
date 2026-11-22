@@ -41,80 +41,58 @@ src/
     HubSpotForm.jsx/.css     formulaire HubSpot + formulaire de démonstration
 ```
 
-## Connecter le formulaire HubSpot
+## Formulaire HubSpot
 
-Tant que les identifiants HubSpot ne sont pas renseignés, le site affiche un **formulaire de démonstration** qui n’envoie aucune donnée. Dès qu’ils le sont, le composant `HubSpotForm` charge le script HubSpot et affiche le vrai formulaire.
+Le formulaire « Demander une démo » est le formulaire HubSpot du portail `149836789` (région `eu1`). Chaque envoi crée ou met à jour un contact dans le CRM.
 
-### 1. Récupérer les valeurs dans HubSpot
+Si l’une des trois variables manque, le site affiche à la place un **formulaire de démonstration** qui n’envoie aucune donnée.
 
-HubSpot > Marketing > Formulaires > votre formulaire > **Partager / Intégrer**. Le code d’intégration ressemble à l’un de ces deux formats :
+### Fonctionnement (`src/components/HubSpotForm.jsx`)
 
-**Format A (classique, « v2 »)**
-
-```html
-<script charset="utf-8" type="text/javascript" src="//js-eu1.hsforms.net/forms/embed/v2.js"></script>
-<script>
-  hbspt.forms.create({
-    region: "eu1",                                  // -> VITE_HUBSPOT_REGION
-    portalId: "12345678",                           // -> VITE_HUBSPOT_PORTAL_ID
-    formId: "1a2b3c4d-1234-5678-9abc-0123456789ab"  // -> VITE_HUBSPOT_FORM_ID
-  });
-</script>
-```
-→ `VITE_HUBSPOT_EMBED_MODE=v2`
-
-**Format B (nouvel éditeur)**
+Le composant reproduit le code d’intégration HubSpot (format `hs-form-frame`) :
 
 ```html
-<script src="https://js-eu1.hsforms.net/forms/embed/12345678.js" defer></script>
-<div class="hs-form-frame" data-region="eu1" data-form-id="1a2b3c4d-..." data-portal-id="12345678"></div>
-```
-→ `VITE_HUBSPOT_EMBED_MODE=frame`, avec `data-region`, `data-portal-id` et `data-form-id` comme valeurs.
-
-Ne collez pas le code HTML dans le projet : seules les trois valeurs (région, portal ID, form ID) sont nécessaires.
-
-### 2. En local
-
-Ajoutez ces lignes au fichier `.env.local` à la racine du projet (créez-le à partir de `.env.example` s’il n’existe pas ; s’il contient déjà une ligne `VERCEL_OIDC_TOKEN` ajoutée par Vercel, gardez-la) :
-
-```
-VITE_HUBSPOT_REGION=eu1
-VITE_HUBSPOT_PORTAL_ID=12345678
-VITE_HUBSPOT_FORM_ID=1a2b3c4d-1234-5678-9abc-0123456789ab
-VITE_HUBSPOT_EMBED_MODE=v2
+<script src="https://js-eu1.hsforms.net/forms/embed/149836789.js" defer></script>
+<div class="hs-form-frame" data-region="eu1" data-form-id="9d1edabd-…" data-portal-id="149836789"></div>
 ```
 
-Relancez `npm run dev`. `.env.local` est ignoré par git.
+- La `div` est rendue par React avec les valeurs des variables d’environnement ; le script est injecté **après le montage**, une seule fois par page (balise identifiée par `id="hubspot-forms-embed"`).
+- Le script HubSpot surveille la page (`MutationObserver`) : si le composant est remonté, le formulaire réapparaît sans recharger le script.
+- Un squelette « Chargement du formulaire… » s’affiche jusqu’à l’événement HubSpot `hs-form-event:on-ready` (ou le chargement de l’iframe). Après 20 s sans réponse, un message d’erreur s’affiche.
 
-### 3. Sur Vercel (site en ligne)
+### Variables
 
-Les variables Vite sont intégrées **au moment du build** : après les avoir ajoutées ou modifiées, il faut **redéployer**.
-
-En ligne de commande (chaque commande demande la valeur) :
-
-```bash
-npx vercel env add VITE_HUBSPOT_REGION production
-npx vercel env add VITE_HUBSPOT_PORTAL_ID production
-npx vercel env add VITE_HUBSPOT_FORM_ID production
-npx vercel env add VITE_HUBSPOT_EMBED_MODE production
-npx vercel --prod
-```
-
-Ou dans le tableau de bord : projet `atlastech-solutions` > **Settings > Environment Variables** > ajoutez les quatre variables (environnement *Production*), puis **Deployments > ⋯ > Redeploy**.
-
-Attention : `npx vercel env pull` réécrit `.env.local` ; sauvegardez vos valeurs locales avant de l’utiliser.
+| Variable | Valeur dans le code HubSpot |
+| --- | --- |
+| `VITE_HUBSPOT_REGION` | `data-region` (ex. `eu1`) |
+| `VITE_HUBSPOT_PORTAL_ID` | `data-portal-id` |
+| `VITE_HUBSPOT_FORM_ID` | `data-form-id` |
 
 Ces valeurs ne sont pas secrètes : elles figurent de toute façon dans le code de la page publiée.
 
-### Style du formulaire HubSpot
+**En local** : copiez `.env.example` en `.env` et remplissez les trois valeurs, puis relancez `npm run dev`. `.env` est ignoré par git.
 
-- **Format A (v2)** : le formulaire est inséré directement dans la page et le thème HubSpot est désactivé (`css: ''`). Les règles `.hubspot-embed` de `src/components/HubSpotForm.css` l’habillent aux couleurs du site (Poppins, champs arrondis 12 px, bouton orange). Si votre compte affiche malgré tout le formulaire dans un iframe, appliquez les réglages ci-dessous dans HubSpot.
-- **Format B (frame)** : le formulaire est rendu dans un iframe, le CSS du site ne peut pas l’atteindre. Dans l’éditeur de formulaire HubSpot (onglet Style), utilisez :
-  - Police : Poppins
-  - Couleur principale / bouton : `#EB7D1A`, texte du bouton `#0F172A`
-  - Texte des libellés : `#0F172A`, texte d’aide : `#64748B`
-  - Bordure des champs : `#CBD5E1`, rayon 12 px
-  - Couleur de focus : `#104896`
+**Sur Vercel** : Vite intègre les variables **au moment du build**, il faut donc **redéployer après chaque ajout ou modification**.
+
+```bash
+npx vercel env add VITE_HUBSPOT_REGION production       # puis la même chose avec "preview"
+npx vercel env add VITE_HUBSPOT_PORTAL_ID production
+npx vercel env add VITE_HUBSPOT_FORM_ID production
+npx vercel --prod
+```
+
+Pour modifier une valeur existante : `npx vercel env rm NOM production` puis `npx vercel env add …`. Ou dans le tableau de bord : projet `atlastech-solutions` > **Settings > Environment Variables**, puis **Deployments > ⋯ > Redeploy**.
+
+### Style du formulaire
+
+Le formulaire est rendu dans un **iframe** : le CSS du site ne peut pas atteindre ses champs. Le site ne gère que le conteneur (carte blanche, bordure, rayon 24 px). Le style se règle dans HubSpot, éditeur du formulaire > onglet **Style** :
+
+- Police : Poppins (ou la plus proche proposée)
+- Bouton : fond `#EB7D1A`, texte `#0F172A`
+- Libellés et texte : `#0F172A`, texte d’aide et placeholders : `#64748B`
+- Champs : fond blanc, bordure `#CBD5E1`, rayon 12 px ; couleur de focus `#104896`
+- Pas de titre ni de paragraphe d’introduction dans le formulaire : la section du site les affiche déjà
+
 
 ## Charte
 

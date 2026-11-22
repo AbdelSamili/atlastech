@@ -3,112 +3,119 @@ import { CircleCheck, Info } from 'lucide-react'
 import './HubSpotForm.css'
 
 /*
- * HubSpot form embed.
+ * HubSpot form embed ("hs-form-frame" format).
  *
- * Values come from Vite environment variables (see .env.example):
- *   VITE_HUBSPOT_REGION      e.g. "eu1" or "na1"
- *   VITE_HUBSPOT_PORTAL_ID   e.g. "12345678"
- *   VITE_HUBSPOT_FORM_ID     e.g. "1a2b3c4d-...."
- *   VITE_HUBSPOT_EMBED_MODE  "v2" (hbspt.forms.create) or "frame" (hs-form-frame div)
+ * Values come from Vite environment variables (see .env.example), injected at build time:
+ *   VITE_HUBSPOT_REGION     data-region     e.g. "eu1"
+ *   VITE_HUBSPOT_PORTAL_ID  data-portal-id  e.g. "149836789"
+ *   VITE_HUBSPOT_FORM_ID    data-form-id    e.g. "9d1edabd-..."
  *
- * The HubSpot script is only requested when portal ID and form ID are set.
- * Otherwise a demonstration form is shown, which sends nothing.
+ * When all three are set, the real HubSpot form is rendered. Otherwise a
+ * demonstration form is shown, which sends nothing.
  */
 const env = import.meta.env
-const REGION = (env.VITE_HUBSPOT_REGION || 'na1').trim()
+const REGION = (env.VITE_HUBSPOT_REGION || '').trim()
 const PORTAL_ID = (env.VITE_HUBSPOT_PORTAL_ID || '').trim()
 const FORM_ID = (env.VITE_HUBSPOT_FORM_ID || '').trim()
-const MODE = (env.VITE_HUBSPOT_EMBED_MODE || 'v2').trim().toLowerCase()
 
-export const isHubSpotConfigured = Boolean(PORTAL_ID && FORM_ID)
+export const isHubSpotConfigured = Boolean(REGION && PORTAL_ID && FORM_ID)
 
-// na1 uses js.hsforms.net, other regions use js-<region>.hsforms.net
-const scriptHost = REGION === 'na1' ? 'js.hsforms.net' : `js-${REGION}.hsforms.net`
+// na1 is served from js.hsforms.net, every other region from js-<region>.hsforms.net
+const SCRIPT_HOST = REGION === 'na1' ? 'js.hsforms.net' : `js-${REGION}.hsforms.net`
+const SCRIPT_SRC = `https://${SCRIPT_HOST}/forms/embed/${PORTAL_ID}.js`
+const SCRIPT_ID = 'hubspot-forms-embed'
+const READY_EVENT = 'hs-form-event:on-ready'
+const LOAD_TIMEOUT_MS = 20000
 
-const scriptPromises = new Map()
-function loadScript(src) {
-  if (!scriptPromises.has(src)) {
-    scriptPromises.set(
-      src,
-      new Promise((resolve, reject) => {
-        const script = document.createElement('script')
-        script.src = src
-        script.async = true
-        script.charset = 'utf-8'
-        script.onload = resolve
-        script.onerror = () => {
-          scriptPromises.delete(src)
-          script.remove()
-          reject(new Error(`Impossible de charger ${src}`))
-        }
-        document.body.appendChild(script)
-      }),
-    )
+/**
+ * Injects the HubSpot loader once per page. Called after the frame div is in
+ * the DOM. The loader watches the page with a MutationObserver, so a frame div
+ * added later (component re-mount, hot reload) is picked up by the same script.
+ */
+function ensureScript(onError) {
+  let script = document.getElementById(SCRIPT_ID)
+  if (!script) {
+    script = document.createElement('script')
+    script.id = SCRIPT_ID
+    script.src = SCRIPT_SRC
+    script.defer = true
+    script.addEventListener('error', () => script.remove()) // allow a retry on next mount
+    document.body.appendChild(script)
   }
-  return scriptPromises.get(src)
+  script.addEventListener('error', onError)
+  return () => script.removeEventListener('error', onError)
 }
 
 function HubSpotEmbed() {
-  const containerRef = useRef(null)
-  const targetId = `hs-form-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`
-  const [state, setState] = useState('loading')
+  const frameRef = useRef(null)
+  const [status, setStatus] = useState('loading') // loading | ready | error
 
   useEffect(() => {
-    let cancelled = false
-    const container = containerRef.current
-
-    if (MODE === 'frame') {
-      // New HubSpot embed: the script scans the page for .hs-form-frame elements.
-      loadScript(`https://${scriptHost}/forms/embed/${PORTAL_ID}.js`)
-        .then(() => !cancelled && setState('ready'))
-        .catch(() => !cancelled && setState('error'))
-      return () => {
-        cancelled = true
-      }
+    const frame = frameRef.current
+    let ready = false
+    const markReady = () => {
+      ready = true
+      setStatus('ready')
     }
 
-    // Legacy v2 embed: hbspt.forms.create renders the form into our container.
-    loadScript(`https://${scriptHost}/forms/embed/v2.js`)
-      .then(() => {
-        if (cancelled || !window.hbspt?.forms) return
-        container.innerHTML = ''
-        window.hbspt.forms.create({
-          region: REGION,
-          portalId: PORTAL_ID,
-          formId: FORM_ID,
-          target: `#${targetId}`,
-          css: '', // drop HubSpot's default theme so the site styles apply
-          onFormReady: () => !cancelled && setState('ready'),
-        })
-      })
-      .catch(() => !cancelled && setState('error'))
+    // HubSpot fires this event on the frame container; it bubbles to window.
+    const onReady = (e) => {
+      if (!e.detail?.formId || e.detail.formId === FORM_ID) markReady()
+    }
+    window.addEventListener(READY_EVENT, onReady)
+
+    // Fallback: consider the form ready once its iframe has loaded.
+    const observer = new MutationObserver(() => {
+      const iframe = frame.querySelector('iframe')
+      if (iframe) {
+        iframe.addEventListener('load', markReady, { once: true })
+        observer.disconnect()
+      }
+    })
+    observer.observe(frame, { childList: true, subtree: true })
+
+    const removeErrorListener = ensureScript(() => !ready && setStatus('error'))
+    const timer = setTimeout(() => !ready && setStatus('error'), LOAD_TIMEOUT_MS)
 
     return () => {
-      cancelled = true
-      if (container) container.innerHTML = ''
+      window.removeEventListener(READY_EVENT, onReady)
+      observer.disconnect()
+      removeErrorListener()
+      clearTimeout(timer)
     }
-  }, [targetId])
+  }, [])
 
   return (
-    <div className="hubspot-embed" aria-busy={state === 'loading'}>
-      {state === 'loading' && <p className="hubspot-embed__status">Chargement du formulaire…</p>}
-      {state === 'error' && (
-        <p className="hubspot-embed__status" role="alert">
+    <div className="hubspot-embed">
+      {status === 'loading' && (
+        <div className="form-skeleton" role="status">
+          <span className="visually-hidden">Chargement du formulaire…</span>
+          <div className="form-skeleton__row" aria-hidden="true">
+            <div className="form-skeleton__field" />
+            <div className="form-skeleton__field" />
+          </div>
+          <div className="form-skeleton__field" aria-hidden="true" />
+          <div className="form-skeleton__field" aria-hidden="true" />
+          <div className="form-skeleton__field form-skeleton__field--area" aria-hidden="true" />
+          <div className="form-skeleton__button" aria-hidden="true" />
+          <p className="form-skeleton__label" aria-hidden="true">
+            Chargement du formulaire…
+          </p>
+        </div>
+      )}
+      {status === 'error' && (
+        <p className="hubspot-embed__error" role="alert">
           Le formulaire n’a pas pu être chargé. Vérifiez votre connexion ou désactivez le bloqueur de contenu, puis
           rechargez la page.
         </p>
       )}
-      {MODE === 'frame' ? (
-        <div
-          ref={containerRef}
-          className="hs-form-frame"
-          data-region={REGION}
-          data-form-id={FORM_ID}
-          data-portal-id={PORTAL_ID}
-        />
-      ) : (
-        <div ref={containerRef} id={targetId} />
-      )}
+      <div
+        ref={frameRef}
+        className="hs-form-frame"
+        data-region={REGION}
+        data-form-id={FORM_ID}
+        data-portal-id={PORTAL_ID}
+      />
     </div>
   )
 }
@@ -134,7 +141,7 @@ function validate(values) {
 
 const EMPTY = { firstname: '', lastname: '', email: '', company: '', message: '' }
 
-/** Demonstration form: validates locally, never sends data anywhere. */
+/** Fallback when HubSpot is not configured: validates locally, never sends data anywhere. */
 function PlaceholderForm() {
   const [values, setValues] = useState(EMPTY)
   const [errors, setErrors] = useState({})
