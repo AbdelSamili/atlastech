@@ -1,0 +1,82 @@
+.about {
+  display: grid;
+  gap: 40px;
+  align-items: center;
+}
+
+.about__text {
+  margin-top: 20px;
+  max-width: 38rem;
+  font-size: 1.0625rem;
+  color: var(--text-2);
+}
+
+.about__place {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 28px;
+  font-weight: 500;
+  color: var(--blue);
+}
+
+.about__card {
+  padding: 28px;
+}
+
+.about__card-title {
+  font-size: 1.125rem;
+}
+
+.about__list {
+  display: grid;
+  gap: 4px;
+  margin-top: 16px;
+}
+
+.about__list li {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 16px;
+  padding-block: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.about__list li:first-child {
+  border-top: 0;
+}
+
+.about__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-ctrl);
+  background: var(--blue-50);
+  color: var(--blue);
+}
+
+.about__item-title {
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.about__item-text {
+  margin-top: 4px;
+  font-size: 0.9375rem;
+  color: var(--text-2);
+}
+
+@media (min-width: 768px) {
+  .about__card {
+    padding: 36px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .about {
+    grid-template-columns: 1.1fr 1fr;
+    gap: 80px;
+  }
+}

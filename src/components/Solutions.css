@@ -1,0 +1,74 @@
+.card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.solutions__grid {
+  display: grid;
+  gap: 20px;
+}
+
+.solution {
+  padding: 28px;
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    opacity var(--dur-enter) var(--ease),
+    transform var(--dur-enter) var(--ease);
+}
+
+.solution:hover {
+  border-color: #c3d3eb;
+}
+
+.solution__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-inner);
+  background: var(--blue-50);
+  color: var(--blue);
+}
+
+.solution__title {
+  margin-top: 24px;
+  font-size: 1.25rem;
+}
+
+.solution__text {
+  margin-top: 10px;
+  color: var(--text-2);
+}
+
+/* Tablet: one card per row, icon beside the text, so no card is left alone */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .solution {
+    display: grid;
+    grid-template-columns: 52px 1fr;
+    column-gap: 24px;
+    padding: 32px;
+  }
+
+  .solution__icon {
+    grid-row: span 2;
+  }
+
+  .solution__title {
+    margin-top: 0;
+    padding-top: 12px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .solutions__grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+
+  .solution {
+    padding: 32px;
+  }
+}
