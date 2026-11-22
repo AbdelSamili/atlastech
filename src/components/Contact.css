@@ -55,18 +55,6 @@
     padding: 40px;
   }
 }
-
-/* The HubSpot form brings its own inner padding: keep the card edge tighter */
-.contact__form:has(.hubspot-embed) {
-  padding: 12px;
-}
-
-@media (min-width: 768px) {
-  .contact__form:has(.hubspot-embed) {
-    padding: 16px;
-  }
-}
-
 @media (min-width: 1024px) {
   .contact__inner {
     grid-template-columns: 1fr 1.1fr;

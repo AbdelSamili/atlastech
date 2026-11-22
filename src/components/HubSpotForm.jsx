@@ -1,124 +1,27 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { CircleCheck, Info } from 'lucide-react'
+import { AlertCircle, CircleCheck, Info, LoaderCircle } from 'lucide-react'
 import './HubSpotForm.css'
 
 /*
- * HubSpot form embed ("hs-form-frame" format).
+ * "Demander une démo" form, styled like the site and submitted directly to
+ * HubSpot with the Forms API (unauthenticated v3 integration endpoint):
+ *   POST https://api.hsforms.com/submissions/v3/integration/submit/{portalId}/{formGuid}
+ * Documented host for all data centers (HubSpot routes by portal ID); CORS is supported.
  *
- * Values come from Vite environment variables (see .env.example), injected at build time:
- *   VITE_HUBSPOT_REGION     data-region     e.g. "eu1"
- *   VITE_HUBSPOT_PORTAL_ID  data-portal-id  e.g. "149836789"
- *   VITE_HUBSPOT_FORM_ID    data-form-id    e.g. "9d1edabd-..."
- *
- * When all three are set, the real HubSpot form is rendered. Otherwise a
- * demonstration form is shown, which sends nothing.
+ * Values come from Vite environment variables, injected at build time:
+ *   VITE_HUBSPOT_REGION, VITE_HUBSPOT_PORTAL_ID, VITE_HUBSPOT_FORM_ID
  */
-const env = import.meta.env
-const REGION = (env.VITE_HUBSPOT_REGION || '').trim()
-const PORTAL_ID = (env.VITE_HUBSPOT_PORTAL_ID || '').trim()
-const FORM_ID = (env.VITE_HUBSPOT_FORM_ID || '').trim()
+// Read each variable explicitly: Vite then inlines only these values, not the whole env object.
+const REGION = (import.meta.env.VITE_HUBSPOT_REGION || '').trim()
+const PORTAL_ID = (import.meta.env.VITE_HUBSPOT_PORTAL_ID || '').trim()
+const FORM_ID = (import.meta.env.VITE_HUBSPOT_FORM_ID || '').trim()
 
 export const isHubSpotConfigured = Boolean(REGION && PORTAL_ID && FORM_ID)
 
-// na1 is served from js.hsforms.net, every other region from js-<region>.hsforms.net
-const SCRIPT_HOST = REGION === 'na1' ? 'js.hsforms.net' : `js-${REGION}.hsforms.net`
-const SCRIPT_SRC = `https://${SCRIPT_HOST}/forms/embed/${PORTAL_ID}.js`
-const SCRIPT_ID = 'hubspot-forms-embed'
-const READY_EVENT = 'hs-form-event:on-ready'
-const LOAD_TIMEOUT_MS = 20000
+const SUBMIT_URL = `https://api.hsforms.com/submissions/v3/integration/submit/${PORTAL_ID}/${FORM_ID}`
 
-/**
- * Injects the HubSpot loader once per page. Called after the frame div is in
- * the DOM. The loader watches the page with a MutationObserver, so a frame div
- * added later (component re-mount, hot reload) is picked up by the same script.
- */
-function ensureScript(onError) {
-  let script = document.getElementById(SCRIPT_ID)
-  if (!script) {
-    script = document.createElement('script')
-    script.id = SCRIPT_ID
-    script.src = SCRIPT_SRC
-    script.defer = true
-    script.addEventListener('error', () => script.remove()) // allow a retry on next mount
-    document.body.appendChild(script)
-  }
-  script.addEventListener('error', onError)
-  return () => script.removeEventListener('error', onError)
-}
-
-function HubSpotEmbed() {
-  const frameRef = useRef(null)
-  const [status, setStatus] = useState('loading') // loading | ready | error
-
-  useEffect(() => {
-    const frame = frameRef.current
-    let ready = false
-    const markReady = () => {
-      ready = true
-      setStatus('ready')
-    }
-
-    // HubSpot fires this event on the frame container; it bubbles to window.
-    const onReady = (e) => {
-      if (!e.detail?.formId || e.detail.formId === FORM_ID) markReady()
-    }
-    window.addEventListener(READY_EVENT, onReady)
-
-    // Fallback: consider the form ready once its iframe has loaded.
-    const observer = new MutationObserver(() => {
-      const iframe = frame.querySelector('iframe')
-      if (iframe) {
-        iframe.addEventListener('load', markReady, { once: true })
-        observer.disconnect()
-      }
-    })
-    observer.observe(frame, { childList: true, subtree: true })
-
-    const removeErrorListener = ensureScript(() => !ready && setStatus('error'))
-    const timer = setTimeout(() => !ready && setStatus('error'), LOAD_TIMEOUT_MS)
-
-    return () => {
-      window.removeEventListener(READY_EVENT, onReady)
-      observer.disconnect()
-      removeErrorListener()
-      clearTimeout(timer)
-    }
-  }, [])
-
-  return (
-    <div className="hubspot-embed">
-      {status === 'loading' && (
-        <div className="form-skeleton" role="status">
-          <span className="visually-hidden">Chargement du formulaire…</span>
-          <div className="form-skeleton__row" aria-hidden="true">
-            <div className="form-skeleton__field" />
-            <div className="form-skeleton__field" />
-          </div>
-          <div className="form-skeleton__field" aria-hidden="true" />
-          <div className="form-skeleton__field" aria-hidden="true" />
-          <div className="form-skeleton__field form-skeleton__field--area" aria-hidden="true" />
-          <div className="form-skeleton__button" aria-hidden="true" />
-          <p className="form-skeleton__label" aria-hidden="true">
-            Chargement du formulaire…
-          </p>
-        </div>
-      )}
-      {status === 'error' && (
-        <p className="hubspot-embed__error" role="alert">
-          Le formulaire n’a pas pu être chargé. Vérifiez votre connexion ou désactivez le bloqueur de contenu, puis
-          rechargez la page.
-        </p>
-      )}
-      <div
-        ref={frameRef}
-        className="hs-form-frame"
-        data-region={REGION}
-        data-form-id={FORM_ID}
-        data-portal-id={PORTAL_ID}
-      />
-    </div>
-  )
-}
+const CONSENT_TEXT =
+  'J’accepte qu’AtlasTech Solutions utilise mes données pour me recontacter au sujet de ma demande, conformément à la loi 09-08 relative à la protection des données personnelles.'
 
 const FIELDS = [
   { name: 'firstname', label: 'Prénom', type: 'text', autoComplete: 'given-name', half: true },
@@ -127,41 +30,75 @@ const FIELDS = [
   { name: 'company', label: 'Entreprise', type: 'text', autoComplete: 'organization' },
 ]
 
+const EMPTY = { firstname: '', lastname: '', email: '', company: '', message: '', consent: false }
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
-function validate(values) {
+function validate(v) {
   const errors = {}
-  if (!values.firstname.trim()) errors.firstname = 'Indiquez votre prénom.'
-  if (!values.lastname.trim()) errors.lastname = 'Indiquez votre nom.'
-  if (!values.email.trim()) errors.email = 'Indiquez votre e-mail professionnel.'
-  else if (!EMAIL_RE.test(values.email.trim())) errors.email = 'Saisissez une adresse e-mail valide, par exemple nom@entreprise.ma.'
-  if (!values.company.trim()) errors.company = 'Indiquez le nom de votre entreprise.'
+  if (!v.firstname.trim()) errors.firstname = 'Indiquez votre prénom.'
+  if (!v.lastname.trim()) errors.lastname = 'Indiquez votre nom.'
+  if (!v.email.trim()) errors.email = 'Indiquez votre e-mail professionnel.'
+  else if (!EMAIL_RE.test(v.email.trim())) errors.email = 'Saisissez une adresse e-mail valide, par exemple nom@entreprise.ma.'
+  if (!v.company.trim()) errors.company = 'Indiquez le nom de votre entreprise.'
+  if (!v.consent) errors.consent = 'Cochez cette case pour que nous puissions traiter votre demande.'
   return errors
 }
 
-const EMPTY = { firstname: '', lastname: '', email: '', company: '', message: '' }
+function getCookie(name) {
+  const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`))
+  return match ? decodeURIComponent(match[1]) : null
+}
 
-/** Fallback when HubSpot is not configured: validates locally, never sends data anywhere. */
-function PlaceholderForm() {
+/** Builds the HubSpot Forms API payload. Property names match the HubSpot form definition. */
+function buildPayload(v) {
+  const company = v.company.trim()
+  const fields = [
+    { objectTypeId: '0-1', name: 'firstname', value: v.firstname.trim() },
+    { objectTypeId: '0-1', name: 'lastname', value: v.lastname.trim() },
+    { objectTypeId: '0-1', name: 'email', value: v.email.trim() },
+    { objectTypeId: '0-2', name: 'name', value: company }, // "Entreprise" field of the HubSpot form (company record)
+    { objectTypeId: '0-1', name: 'company', value: company }, // company name on the contact record
+  ]
+  if (v.message.trim()) fields.push({ objectTypeId: '0-1', name: 'message', value: v.message.trim() })
+
+  const context = { pageUri: window.location.href, pageName: document.title }
+  const hutk = getCookie('hubspotutk')
+  if (hutk) context.hutk = hutk
+
+  return {
+    submittedAt: Date.now(),
+    fields,
+    context,
+    legalConsentOptions: {
+      consent: { consentToProcess: v.consent, text: CONSENT_TEXT },
+    },
+  }
+}
+
+export default function HubSpotForm() {
   const [values, setValues] = useState(EMPTY)
   const [errors, setErrors] = useState({})
-  const [sent, setSent] = useState(false)
+  const [status, setStatus] = useState('idle') // idle | sending | success | error
   const formRef = useRef(null)
   const successRef = useRef(null)
+  const errorRef = useRef(null)
   const uid = useId()
 
   useEffect(() => {
-    if (sent) successRef.current?.focus()
-  }, [sent])
+    if (status === 'success') successRef.current?.focus()
+    if (status === 'error') errorRef.current?.focus()
+  }, [status])
 
   const onChange = (e) => {
-    const { name, value } = e.target
-    setValues((v) => ({ ...v, [name]: value }))
+    const { name, type, value, checked } = e.target
+    setValues((v) => ({ ...v, [name]: type === 'checkbox' ? checked : value }))
     if (errors[name]) setErrors((err) => ({ ...err, [name]: undefined }))
   }
 
-  const onSubmit = (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault()
+    if (status === 'sending' || !isHubSpotConfigured) return
+
     const found = validate(values)
     setErrors(found)
     const first = Object.keys(found)[0]
@@ -169,39 +106,51 @@ function PlaceholderForm() {
       formRef.current?.querySelector(`[name="${first}"]`)?.focus()
       return
     }
-    // Intentionally no network request: this is a demonstration form.
-    setSent(true)
+
+    setStatus('sending')
+    try {
+      const res = await fetch(SUBMIT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildPayload(values)),
+      })
+      if (!res.ok) {
+        const details = await res.json().catch(() => null)
+        console.error('[HubSpot] Échec de l’envoi du formulaire', res.status, details)
+        if (details?.errors?.some((err) => err.errorType === 'INVALID_EMAIL')) {
+          setErrors({ email: 'Cette adresse e-mail a été refusée. Utilisez votre adresse professionnelle.' })
+        }
+        setStatus('error')
+        return
+      }
+      setStatus('success')
+    } catch (err) {
+      console.error('[HubSpot] Erreur réseau lors de l’envoi du formulaire', err)
+      setStatus('error')
+    }
   }
 
-  if (sent) {
+  if (status === 'success') {
     return (
-      <div className="demo-success" ref={successRef} tabIndex={-1} role="status">
-        <CircleCheck size={28} strokeWidth={1.75} aria-hidden="true" className="demo-success__icon" />
-        <p className="demo-success__title">Merci {values.firstname.trim()}, votre demande est bien enregistrée</p>
-        <p className="demo-success__text">
-          Ceci est une démonstration : aucune donnée n’a été envoyée. Une fois relié à HubSpot, ce formulaire créera
-          automatiquement un contact dans le CRM.
+      <div className="form-success" ref={successRef} tabIndex={-1} role="status">
+        <CircleCheck size={32} strokeWidth={1.75} aria-hidden="true" className="form-success__icon" />
+        <p className="form-success__title">Merci, votre demande est bien reçue&nbsp;!</p>
+        <p className="form-success__text">
+          Un conseiller AtlasTech vous recontacte sous 24&nbsp;h pour organiser votre démonstration.
         </p>
-        <button
-          type="button"
-          className="btn btn-secondary"
-          onClick={() => {
-            setValues(EMPTY)
-            setSent(false)
-          }}
-        >
-          Envoyer une autre demande
-        </button>
       </div>
     )
   }
 
+  const sending = status === 'sending'
+  const fieldError = (name) => errors[name]
+  const describedBy = (name) => (errors[name] ? `${uid}-${name}-err` : undefined)
+
   return (
-    <form ref={formRef} className="demo-form" onSubmit={onSubmit} noValidate aria-describedby={`${uid}-note`}>
+    <form ref={formRef} className="demo-form" onSubmit={onSubmit} noValidate aria-busy={sending}>
       <div className="demo-form__grid">
         {FIELDS.map((f) => {
           const id = `${uid}-${f.name}`
-          const err = errors[f.name]
           return (
             <div key={f.name} className={`field${f.half ? ' field--half' : ''}`}>
               <label htmlFor={id}>
@@ -215,12 +164,13 @@ function PlaceholderForm() {
                 value={values[f.name]}
                 onChange={onChange}
                 required
-                aria-invalid={err ? 'true' : undefined}
-                aria-describedby={err ? `${id}-err` : undefined}
+                disabled={sending}
+                aria-invalid={fieldError(f.name) ? 'true' : undefined}
+                aria-describedby={describedBy(f.name)}
               />
-              {err && (
+              {fieldError(f.name) && (
                 <p id={`${id}-err`} className="field__error">
-                  {err}
+                  {fieldError(f.name)}
                 </p>
               )}
             </div>
@@ -229,7 +179,7 @@ function PlaceholderForm() {
 
         <div className="field">
           <label htmlFor={`${uid}-message`}>
-            Message <span className="field__opt">(facultatif)</span>
+            Votre besoin <span className="field__opt">(facultatif)</span>
           </label>
           <textarea
             id={`${uid}-message`}
@@ -237,23 +187,60 @@ function PlaceholderForm() {
             rows={4}
             value={values.message}
             onChange={onChange}
+            disabled={sending}
             placeholder="Votre projet en quelques lignes"
           />
         </div>
+
+        <div className="field consent">
+          <div className="consent__row">
+            <input
+              id={`${uid}-consent`}
+              name="consent"
+              type="checkbox"
+              checked={values.consent}
+              onChange={onChange}
+              required
+              disabled={sending}
+              aria-invalid={fieldError('consent') ? 'true' : undefined}
+              aria-describedby={describedBy('consent')}
+            />
+            <label htmlFor={`${uid}-consent`}>
+              {CONSENT_TEXT} <span aria-hidden="true" className="field__req">*</span>
+            </label>
+          </div>
+          {fieldError('consent') && (
+            <p id={`${uid}-consent-err`} className="field__error">
+              {fieldError('consent')}
+            </p>
+          )}
+        </div>
       </div>
 
-      <button type="submit" className="btn btn-cta demo-form__submit">
-        Envoyer
+      {status === 'error' && (
+        <p className="form-alert" role="alert" tabIndex={-1} ref={errorRef}>
+          <AlertCircle size={18} strokeWidth={1.75} aria-hidden="true" />
+          Une erreur est survenue, veuillez réessayer.
+        </p>
+      )}
+
+      <button type="submit" className="btn btn-cta demo-form__submit" disabled={sending || !isHubSpotConfigured}>
+        {sending ? (
+          <>
+            <LoaderCircle size={18} strokeWidth={2} aria-hidden="true" className="spin" />
+            Envoi en cours…
+          </>
+        ) : (
+          'Demander une démo'
+        )}
       </button>
 
-      <p id={`${uid}-note`} className="demo-form__note">
-        <Info size={16} strokeWidth={1.75} aria-hidden="true" />
-        Formulaire de démonstration – sera connecté à HubSpot
-      </p>
+      {!isHubSpotConfigured && (
+        <p className="demo-form__note">
+          <Info size={16} strokeWidth={1.75} aria-hidden="true" />
+          Formulaire non configuré : renseignez les variables VITE_HUBSPOT_* pour activer l’envoi.
+        </p>
+      )}
     </form>
   )
-}
-
-export default function HubSpotForm() {
-  return isHubSpotConfigured ? <HubSpotEmbed /> : <PlaceholderForm />
 }

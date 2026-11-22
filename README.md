@@ -38,39 +38,50 @@ src/
   nav.js                     liens de navigation (en-tête et pied de page)
   components/
     Header, Hero, Solutions, Method, About, Contact, Footer
-    HubSpotForm.jsx/.css     formulaire HubSpot + formulaire de démonstration
+    HubSpotForm.jsx/.css     formulaire de contact, envoi vers l’API Forms HubSpot
 ```
 
 ## Formulaire HubSpot
 
-Le formulaire « Demander une démo » est le formulaire HubSpot du portail `149836789` (région `eu1`). Chaque envoi crée ou met à jour un contact dans le CRM.
+Le formulaire « Demander une démo » est un formulaire React aux couleurs du site (`src/components/HubSpotForm.jsx`). À l’envoi, il transmet les données au formulaire HubSpot existant (portail `149836789`, région `eu1`) via l’**API Forms de HubSpot** : chaque envoi crée ou met à jour un contact dans le CRM et apparaît dans les soumissions du formulaire. Aucun iframe ni script HubSpot n’est chargé.
 
-Si l’une des trois variables manque, le site affiche à la place un **formulaire de démonstration** qui n’envoie aucune donnée.
+### Envoi
 
-### Fonctionnement (`src/components/HubSpotForm.jsx`)
-
-Le composant reproduit le code d’intégration HubSpot (format `hs-form-frame`) :
-
-```html
-<script src="https://js-eu1.hsforms.net/forms/embed/149836789.js" defer></script>
-<div class="hs-form-frame" data-region="eu1" data-form-id="9d1edabd-…" data-portal-id="149836789"></div>
+```
+POST https://api.hsforms.com/submissions/v3/integration/submit/{portalId}/{formId}
+Content-Type: application/json
 ```
 
-- La `div` est rendue par React avec les valeurs des variables d’environnement ; le script est injecté **après le montage**, une seule fois par page (balise identifiée par `id="hubspot-forms-embed"`).
-- Le script HubSpot surveille la page (`MutationObserver`) : si le composant est remonté, le formulaire réapparaît sans recharger le script.
-- Un squelette « Chargement du formulaire… » s’affiche jusqu’à l’événement HubSpot `hs-form-event:on-ready` (ou le chargement de l’iframe). Après 20 s sans réponse, un message d’erreur s’affiche.
+Point d’accès *unauthenticated* documenté par HubSpot ; il accepte les requêtes depuis le navigateur (CORS). L’hôte `api.hsforms.com` est le seul listé dans la documentation : HubSpot achemine la soumission vers le bon centre de données (eu1) grâce au portal ID.
+
+Correspondance des champs (noms internes lus dans la définition du formulaire HubSpot) :
+
+| Champ du site | Propriété HubSpot |
+| --- | --- |
+| Prénom | `0-1/firstname` |
+| Nom | `0-1/lastname` |
+| E-mail professionnel | `0-1/email` |
+| Entreprise | `0-2/name` (champ « Entreprise » du formulaire, fiche entreprise) et `0-1/company` (nom de l’entreprise sur le contact) |
+| Votre besoin | `0-1/message` (facultatif) |
+| Case de consentement | `legalConsentOptions.consent` (`consentToProcess: true` + texte affiché) |
+
+Le contexte envoie `pageUri` (URL courante), `pageName` (titre de la page) et `hutk` uniquement si le cookie `hubspotutk` existe (il n’existe que si le code de suivi HubSpot est installé sur le site).
+
+Comportement : validation en français avant l’envoi (champs obligatoires, format de l’e-mail, consentement), bouton désactivé « Envoi en cours… » pendant la requête, message de remerciement en cas de succès, message « Une erreur est survenue, veuillez réessayer. » en cas d’échec avec conservation des valeurs saisies. Le détail de l’erreur HubSpot est affiché dans la console du navigateur (`[HubSpot] Échec de l’envoi du formulaire`).
+
+Pour vérifier un nom interne dans HubSpot : **Paramètres > Propriétés**, chercher la propriété, puis lire son **nom interne**.
 
 ### Variables
 
-| Variable | Valeur dans le code HubSpot |
+| Variable | Valeur |
 | --- | --- |
-| `VITE_HUBSPOT_REGION` | `data-region` (ex. `eu1`) |
-| `VITE_HUBSPOT_PORTAL_ID` | `data-portal-id` |
-| `VITE_HUBSPOT_FORM_ID` | `data-form-id` |
+| `VITE_HUBSPOT_REGION` | région du compte, ex. `eu1` |
+| `VITE_HUBSPOT_PORTAL_ID` | portal ID (`data-portal-id` du code d’intégration) |
+| `VITE_HUBSPOT_FORM_ID` | ID du formulaire (`data-form-id`) |
 
-Ces valeurs ne sont pas secrètes : elles figurent de toute façon dans le code de la page publiée.
+Si l’une d’elles manque, le formulaire s’affiche avec le bouton désactivé et la mention « Formulaire non configuré ». Ces valeurs ne sont pas secrètes : elles figurent dans le code de la page publiée.
 
-**En local** : copiez `.env.example` en `.env` et remplissez les trois valeurs, puis relancez `npm run dev`. `.env` est ignoré par git.
+**En local** : copiez `.env.example` en `.env`, remplissez les trois valeurs, puis relancez `npm run dev`. `.env` est ignoré par git.
 
 **Sur Vercel** : Vite intègre les variables **au moment du build**, il faut donc **redéployer après chaque ajout ou modification**.
 
@@ -83,16 +94,10 @@ npx vercel --prod
 
 Pour modifier une valeur existante : `npx vercel env rm NOM production` puis `npx vercel env add …`. Ou dans le tableau de bord : projet `atlastech-solutions` > **Settings > Environment Variables**, puis **Deployments > ⋯ > Redeploy**.
 
-### Style du formulaire
+### Points d’attention
 
-Le formulaire est rendu dans un **iframe** : le CSS du site ne peut pas atteindre ses champs. Le site ne gère que le conteneur (carte blanche, bordure, rayon 24 px). Le style se règle dans HubSpot, éditeur du formulaire > onglet **Style** :
-
-- Police : Poppins (ou la plus proche proposée)
-- Bouton : fond `#EB7D1A`, texte `#0F172A`
-- Libellés et texte : `#0F172A`, texte d’aide et placeholders : `#64748B`
-- Champs : fond blanc, bordure `#CBD5E1`, rayon 12 px ; couleur de focus `#104896`
-- Pas de titre ni de paragraphe d’introduction dans le formulaire : la section du site les affiche déjà
-
+- Si vous activez **reCAPTCHA** sur le formulaire HubSpot, l’API refusera les envois (`FORM_HAS_RECAPTCHA_ENABLED`) : laissez-le désactivé.
+- Si vous **renommez ou supprimez un champ** dans HubSpot, mettez à jour la correspondance dans `buildPayload()` (`HubSpotForm.jsx`).
 
 ## Charte
 

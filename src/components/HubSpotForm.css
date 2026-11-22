@@ -1,71 +1,3 @@
-/* ---------- HubSpot embed ----------
- * The form renders inside an iframe, so its fields are styled in HubSpot's
- * form editor (Style tab), not here. Only the container is styled: it sits in
- * the site's form card (see Contact.css).
- */
-.hubspot-embed .hs-form-frame {
-  width: 100%;
-}
-
-.hubspot-embed iframe {
-  display: block;
-  width: 100% !important;
-  border: 0;
-}
-
-.hubspot-embed__error {
-  padding: 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-ctrl);
-  color: var(--text-2-strong);
-}
-
-/* Loading skeleton: mirrors the form layout so nothing jumps when it appears */
-.form-skeleton {
-  display: grid;
-  gap: 20px;
-}
-
-.form-skeleton__row {
-  display: grid;
-  gap: 20px;
-}
-
-@media (min-width: 480px) {
-  .form-skeleton__row {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-.form-skeleton__field {
-  height: 78px;
-  background:
-    linear-gradient(var(--blue-50), var(--blue-50)) 0 0 / 40% 14px no-repeat,
-    linear-gradient(var(--blue-50), var(--blue-50)) 0 30px / 100% 48px no-repeat;
-  border-radius: var(--radius-ctrl);
-}
-
-.form-skeleton__field--area {
-  height: 150px;
-  background:
-    linear-gradient(var(--blue-50), var(--blue-50)) 0 0 / 30% 14px no-repeat,
-    linear-gradient(var(--blue-50), var(--blue-50)) 0 30px / 100% 120px no-repeat;
-}
-
-.form-skeleton__button {
-  height: 48px;
-  margin-top: 8px;
-  border-radius: var(--radius-ctrl);
-  background: var(--blue-50);
-}
-
-.form-skeleton__label {
-  font-size: 0.875rem;
-  color: var(--text-2);
-  text-align: center;
-}
-
-/* ---------- Demonstration form (fallback when HubSpot is not configured) ---------- */
 .demo-form__grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -104,7 +36,7 @@
   color: var(--text-2);
 }
 
-.field input,
+.field input:not([type='checkbox']),
 .field textarea {
   display: block;
   width: 100%;
@@ -130,16 +62,22 @@
   color: #94a3b8;
 }
 
-.field input:hover,
+.field input:not([type='checkbox']):hover,
 .field textarea:hover {
   border-color: #94a3b8;
 }
 
-.field input:focus-visible,
+.field input:not([type='checkbox']):focus-visible,
 .field textarea:focus-visible {
   outline: none;
   border-color: var(--blue);
   box-shadow: 0 0 0 3px rgba(16, 72, 150, 0.18);
+}
+
+.field input:disabled,
+.field textarea:disabled {
+  background: #f8fafc;
+  color: var(--text-2);
 }
 
 .field input[aria-invalid='true'] {
@@ -152,9 +90,81 @@
   color: #b91c1c;
 }
 
+/* ---------- Consent checkbox ---------- */
+.consent__row {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.consent input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  margin: 2px 0 0;
+  accent-color: var(--blue);
+  cursor: pointer;
+}
+
+.consent input[type='checkbox'][aria-invalid='true'] {
+  outline: 2px solid #dc2626;
+  outline-offset: 2px;
+}
+
+.field.consent label {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--text-2-strong);
+  cursor: pointer;
+}
+
+.consent .field__error {
+  padding-left: 32px;
+}
+
+/* ---------- Submit, alert, note ---------- */
 .demo-form__submit {
   width: 100%;
   margin-top: 28px;
+}
+
+.demo-form__submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.demo-form__submit:disabled:active {
+  transform: none;
+}
+
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.form-alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 24px;
+  padding: 12px 16px;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-ctrl);
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 0.9375rem;
+  outline: none;
+}
+
+.form-alert svg {
+  flex: none;
 }
 
 .demo-form__note {
@@ -172,23 +182,25 @@
   flex: none;
 }
 
-.demo-success {
+/* ---------- Success ---------- */
+.form-success {
   padding: 8px 0;
   outline: none;
 }
 
-.demo-success__icon {
+.form-success__icon {
   color: var(--green);
 }
 
-.demo-success__title {
+.form-success__title {
   margin-top: 16px;
-  font-size: 1.25rem;
+  font-size: 1.375rem;
   font-weight: 500;
   line-height: 1.35;
 }
 
-.demo-success__text {
-  margin: 12px 0 28px;
+.form-success__text {
+  margin-top: 12px;
+  font-size: 1.0625rem;
   color: var(--text-2);
 }
