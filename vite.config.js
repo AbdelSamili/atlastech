@@ -1,8 +1,8 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// The site is a GitHub Pages *user site* (repository "abdelsamili.github.io"),
-// served from the domain root: https://abdelsamili.github.io/
+// The site is deployed on Vercel and served from the domain root:
+// https://atlastech-solutions.vercel.app/
 export default defineConfig({
   base: '/',
   plugins: [react()],

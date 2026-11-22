@@ -3,7 +3,7 @@
 Site one-page d’une **entreprise fictive** (projet universitaire, Master Qualité du Logiciel, FST Fès) utilisé dans une présentation CRM HubSpot. Le formulaire « Demander une démo » est prévu pour être relié à HubSpot : chaque prospect qui le remplit apparaît automatiquement comme contact dans le CRM.
 
 - React + Vite, CSS simple, icônes `lucide-react`
-- En ligne : **https://abdelsamili.github.io/**
+- En ligne : **https://atlastech-solutions.vercel.app/**
 
 ## Lancer en local
 
@@ -16,11 +16,18 @@ npm run preview    # sert dist/ sur http://localhost:4173/
 
 ## Déploiement
 
-Le dépôt s’appelle `abdelsamili.github.io` : c’est un *site utilisateur* GitHub Pages, servi à la racine du domaine (d’où `base: '/'` dans `vite.config.js`). Ce format permet de saisir `abdelsamili.github.io` dans le champ « Site web de l’entreprise » de HubSpot, qui refuse les sous-chemins.
+Le site est hébergé sur **Vercel**, projet `atlastech-solutions`, servi à la racine du domaine (`base: '/'` dans `vite.config.js`). C’est cette adresse, sans `https://`, qui est saisie dans le champ « Site web de l’entreprise » de HubSpot : `atlastech-solutions.vercel.app`.
 
-- Chaque push sur `main` lance `.github/workflows/deploy.yml` : `npm ci`, `npm run build`, puis publication de `dist/` sur GitHub Pages.
-- Réglage requis une seule fois : **Settings > Pages > Build and deployment > Source : GitHub Actions**.
-- L’ancienne adresse `https://abdelsamili.github.io/atlastech/` n’est plus servie depuis le renommage du dépôt.
+- Preset Vercel : **Vite**, commande de build `npm run build`, dossier de sortie `dist`. Aucun `vercel.json` n’est nécessaire.
+- **Déploiement automatique** : le dépôt GitHub `AbdelSamili/atlastech` est connecté au projet Vercel. Chaque push sur `main` déclenche un déploiement de production ; les autres branches obtiennent une URL de prévisualisation.
+- **Déploiement manuel** depuis ce dossier (déjà lié au projet via `.vercel/`) :
+
+  ```bash
+  npx vercel login     # une seule fois
+  npx vercel --prod    # build + mise en production
+  ```
+
+- **Redéployer sans changer le code** (par exemple après avoir ajouté une variable d’environnement) : tableau de bord Vercel > projet `atlastech-solutions` > **Deployments** > menu `⋯` du dernier déploiement > **Redeploy**, ou `npx vercel --prod`.
 
 ## Structure
 
@@ -32,7 +39,6 @@ src/
   components/
     Header, Hero, Solutions, Method, About, Contact, Footer
     HubSpotForm.jsx/.css     formulaire HubSpot + formulaire de démonstration
-.github/workflows/deploy.yml build + déploiement GitHub Pages à chaque push sur main
 ```
 
 ## Connecter le formulaire HubSpot
@@ -69,7 +75,7 @@ Ne collez pas le code HTML dans le projet : seules les trois valeurs (région, p
 
 ### 2. En local
 
-Copiez `.env.example` en `.env.local` à la racine du projet et remplissez :
+Ajoutez ces lignes au fichier `.env.local` à la racine du projet (créez-le à partir de `.env.example` s’il n’existe pas ; s’il contient déjà une ligne `VERCEL_OIDC_TOKEN` ajoutée par Vercel, gardez-la) :
 
 ```
 VITE_HUBSPOT_REGION=eu1
@@ -80,9 +86,23 @@ VITE_HUBSPOT_EMBED_MODE=v2
 
 Relancez `npm run dev`. `.env.local` est ignoré par git.
 
-### 3. Sur GitHub Pages
+### 3. Sur Vercel (site en ligne)
 
-Les variables Vite sont intégrées au moment du build. Dans le dépôt GitHub : **Settings > Secrets and variables > Actions > onglet Variables > New repository variable**, créez les quatre variables avec les mêmes noms et valeurs. Relancez ensuite le workflow (**Actions > Deploy to GitHub Pages > Run workflow**) ou poussez un commit.
+Les variables Vite sont intégrées **au moment du build** : après les avoir ajoutées ou modifiées, il faut **redéployer**.
+
+En ligne de commande (chaque commande demande la valeur) :
+
+```bash
+npx vercel env add VITE_HUBSPOT_REGION production
+npx vercel env add VITE_HUBSPOT_PORTAL_ID production
+npx vercel env add VITE_HUBSPOT_FORM_ID production
+npx vercel env add VITE_HUBSPOT_EMBED_MODE production
+npx vercel --prod
+```
+
+Ou dans le tableau de bord : projet `atlastech-solutions` > **Settings > Environment Variables** > ajoutez les quatre variables (environnement *Production*), puis **Deployments > ⋯ > Redeploy**.
+
+Attention : `npx vercel env pull` réécrit `.env.local` ; sauvegardez vos valeurs locales avant de l’utiliser.
 
 Ces valeurs ne sont pas secrètes : elles figurent de toute façon dans le code de la page publiée.
 
