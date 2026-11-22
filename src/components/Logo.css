@@ -1,0 +1,32 @@
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--text);
+}
+
+.logo__text {
+  font-size: 1.125rem;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.logo__name {
+  font-weight: 700;
+  color: var(--blue);
+}
+
+.logo__suffix {
+  font-weight: 400;
+  color: var(--text-2);
+}
+
+.logo--inverted .logo__name {
+  color: #fff;
+}
+
+.logo--inverted .logo__suffix {
+  color: rgba(255, 255, 255, 0.8);
+}
